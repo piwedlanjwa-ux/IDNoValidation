@@ -1,0 +1,175 @@
+﻿@{
+  ViewData["Title"] = "Home Page";
+}
+
+@model IDNoValidator.Models.IDNumberModel
+
+<div class="text-center">
+  <h1 class="display-4">ID Validator</h1>
+
+
+  @using (Html.BeginForm("ValidateIDNumber", "IDNumber", FormMethod.Post, new { @class = "id-number-form" }))
+  {
+    <div class="form-group">
+      @Html.LabelFor(model => model.IDNumber)
+      @Html.TextBoxFor(model => model.IDNumber, new { @class = "form-control", @id = "id-number-input" })
+      @Html.ValidationMessageFor(model => model.IDNumber)
+      <div id="detailsDiv" name="detailsDiv"></div>
+    </div>
+    <button type="button" class="btn btn-primary" id="validate-button">Validate</button>
+  }
+
+</div>
+<script>
+  function isNumeric(input) {
+    var regex = /^[0-9]+$/;
+    return regex.test(input);
+  }
+
+  $(document).ready(function () {
+    $("#validate-button").click(function () {
+
+      event.preventDefault();
+
+      var idNumber = $("#id-number-input").val();
+      var isValid = true;
+      var invalidDetails = "";
+      var validDetails = "";
+      var genderDigits = parseInt(idNumber.substr(6, 4));
+      var idGender = "";
+
+      if (genderDigits >= 0 && genderDigits <= 4999) {
+        idGender = "Female"
+      }
+      else if (genderDigits >= 5000 && genderDigits <= 9999) {
+        idGender = "Male";
+      }
+      
+
+      if (idNumber.length !== 13) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >ID Number should be 13 digits; </p>"
+      }
+
+      var idYear = parseInt(idNumber.substr(0, 2));
+
+      if (!isNumeric(idNumber)) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >ID should be numbers only; </p>"
+      }
+
+
+      if (idYear > 99 || idYear < 00) {
+
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >Invalid year of birth " + idYear + "; </p>"
+      }
+
+      var idMonth = parseInt(idNumber.substr(2, 2));
+
+      if (idMonth > 12 || idMonth < 01) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >Invalid month of birth; " + idMonth + "; </p>"
+      }
+
+      var idDate = parseInt(idNumber.substr(4, 2));
+
+      if (idDate > 31 || idDate < 01) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >Invalid day of birth; " + idDate + " </p>"
+      }
+
+      var idCitizenship = parseInt(idNumber.substr(10, 1));
+
+      if (idCitizenship !== 0 && idCitizenship !== 1) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >Invalid Citizenship status; " + idCitizenship + " </p>"
+      }
+
+      var digit12 = parseInt(idNumber.substr(11, 1));
+
+      if (digit12 !== 8) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >12th Digit should be 8 not " + digit12 + " </p>"
+      }
+
+      var lastDigit = parseInt(idNumber.substr(12, 1));
+
+      var sumOdds = 0;
+      var newNumberStr = "";
+      var newIdNumber = idNumber.substr(0, 12);
+
+      for (var i = 0; i < newIdNumber.length; i += 2) {
+        var digit = parseInt(idNumber.charAt(i));
+        sumOdds += digit;
+
+      }
+
+      for (var j = 1; j < idNumber.length; j += 2) {
+        newNumberStr += idNumber.charAt(j);
+      }
+
+      var newNumber = parseInt(newNumberStr);
+      var newNumber2 = newNumber * 2;
+      var newNumber2Str = newNumber2.toString();
+      var sum2 = 0;
+
+      for (var k = 0; k < newNumber2Str.length; k++) {
+        var digit2 = parseInt(newNumber2Str.charAt(k));
+        sum2 += digit2;
+      }
+
+      var totalSum = sum2 + sumOdds;
+      var totalSumStr = totalSum.toString();
+      var totalSumSecondDigit = totalSumStr.charAt(1);
+      var calculatedLastDigit = parseInt(10-totalSumSecondDigit);
+      debugger;
+
+      if (lastDigit !== calculatedLastDigit) {
+        isValid = false;
+        invalidDetails += "<p style = 'color: red; font-weight: 500;' >Last Digit Checksum Failed " + lastDigit + " </p>"
+      }
+
+      var idCitizenshipStr;
+      if (idCitizenship == 1) {
+        idCitizenshipStr = "Permanent Resident";
+      }
+      else if (idCitizenship == 0) {
+        idCitizenshipStr = "South African"
+      }
+
+      validDetails += "<p style='color: green; font-weight: 500;'>Date of birth: " + idYear +"/"+ idMonth +"/"+ idDate + "</p >" +
+        "<p style='color: green; font-weight: 500;'>Gender: " + idGender + "</p >" +
+        "<p style='color: green; font-weight: 500;'>Citizenship: " + idCitizenshipStr + "</p >" +
+        "<p style='color: green; font-weight: 500;'>Checksum: " + calculatedLastDigit + "</p >";
+
+      if (isValid) {
+        $("#detailsDiv").html("<p style='color: green; font-weight: 500;'>Valid ID: " + idNumber + "</p >" + validDetails);
+      }
+
+      if (!isValid) {
+        $("#detailsDiv").html("<p style='color: red; font-weight: 500;'>Invalid ID: " + idNumber + "</p>" + invalidDetails);
+      }
+
+      var requestData = {
+        idNumber: idNumber
+      }
+
+      $.ajax({
+        url: "/api/IDNoValidator/ValidateIDNumber",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(requestData),
+        success: function (data) {
+          debugger;
+          alert("Saved");
+        },
+        error: function () {
+          alert("An error occurred.");
+        }
+      });
+    });
+
+  });
+   
+</script>
